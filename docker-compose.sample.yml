@@ -1,0 +1,51 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:14.4-bullseye
+    environment:
+      POSTGRES_USER: ${BGPRECORDER_DB_USER}
+      POSTGRES_PASSWORD: ${BGPRECORDER_DB_PASSWORD}
+      POSTGRES_DB: ${BGPRECORDER_DB_NAME}
+      TZ: "Asia/Tokyo"
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data
+  bgprecorder:
+    build:
+      context: ./bgprecorder
+    volumes:
+      - ./backup:/var/log/ribs
+      - ./bgprecorder:/opt/bgprecorder
+      - bgprecorder_local_cache:/var/bgprecorder
+    environment:
+      BGPRECORDER_TARGET_FILES: /var/log/ribs/*.dump
+      BGPRECORDER_CACHE_FILE: /var/bgprecorder/bgprecorder.db
+      BGPRECORDER_DURATION: 3600
+      BGPRECORDER_DB_HOST: postgres
+      BGPRECORDER_DB_PORT: 5432
+      BGPRECORDER_DB_NAME: ${BGPRECORDER_DB_NAME}
+      BGPRECORDER_DB_USER: ${BGPRECORDER_DB_USER}
+      BGPRECORDER_DB_PASSWORD: ${BGPRECORDER_DB_PASSWORD}
+      TZ: "Asia/Tokyo"
+  cron:
+    image: ghcr.io/wide-vsix/simple-cron:latest
+    environment:
+      TZ: Asia/Tokyo
+      CRON_OPTION: "0 3 * * *" # once a day
+      CRON_COMMAND: |
+        # rsync flom remote
+        rsync -tvz -6 vsix@ex-collector:/var/log/gobgp/ribs/*.dump /backup"
+
+        # delete 14 days age files
+        find /var/log/gobgp/ribs/ -type f -name "*.dump*" -mtime +14 | xargs -I arg echo Dlete file: arg
+        find /var/log/gobgp/ribs/ -type f -name "*.dump*" -mtime +14 | xargs -I arg rm arg
+        # compress 7 days ages file
+        find /var/log/gobgp/ribs/ -type f -name "*.dump" -mtime +7  | xargs -I arg echo Compress file: arg
+        find /var/log/gobgp/ribs/ -type f -name "*.dump" -mtime +7  | xargs -I arg bzip2 arg
+
+    volumes:
+      - /var/log/gobgp:/var/log/gobgp
+volumes:
+  postgres: {}
+  bgprecorder_local_cache: {}
