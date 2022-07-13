@@ -249,6 +249,7 @@ def main():
                 logger.info(f"Already registered: {file}")
                 logger.info(f"set valid flag")
                 saved_file_cache.set(table_name, True)
+                continue
 
             # 正常に登録できてないor新規なので一旦flagをfalseにする．
             saved_file_cache.set(table_name, False)
