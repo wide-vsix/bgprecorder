@@ -199,21 +199,27 @@ def main():
         files = get_dump_files()
         for file in files:
             logger.info(f"Check file:{file}")
-            if not saved_file_cache.get(file) and not is_table_exists(filepath=file):
-                logger.info(f"file: {file} found! try to record...")
-                if create_table_and_insert_route(file):
-                    logger.info(f"file: {file} is successfully recorded.")
-                    saved_file_cache.set(file, True)  # successfully flag
-                    if is_compress:
-                        if bzip2(file):
-                            logger.info(f"file: {file} is compressed.")
-                else:
-                    logger.error(f"file: {file} could not be recorded.")
-            else:
+
+            # check already exists or not
+            if saved_file_cache.get(file) and is_table_exists(filepath=file):
                 logger.info(f"Already registered: {file}")
                 if is_compress:
                     if bzip2(file):
                         logger.info(f"file: {file} is compressed.")
+                continue
+            # 正常に登録できてないので一旦flagをfalseにする． 誤ってsetされているとこうなる．
+            saved_file_cache.set(file, False)
+
+            logger.info(f"file: {file} found! try to record...")
+            if create_table_and_insert_route(file):
+                logger.info(f"file: {file} is successfully recorded.")
+                saved_file_cache.set(file, True)  # successfully flag
+                if is_compress:
+                    if bzip2(file):
+                        logger.info(f"file: {file} is compressed.")
+            else:
+                logger.error(f"file: {file} could not be recorded.")
+
         logger.info(f"Cycle finished. sleep {sleep_second} sec.")
         time.sleep(sleep_second)
 
