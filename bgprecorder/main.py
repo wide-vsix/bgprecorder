@@ -5,6 +5,7 @@ from datetime import datetime
 import subprocess
 from logzero import logger
 import pickledb
+import sys
 import glob
 import time
 
@@ -160,7 +161,7 @@ def create_table_and_insert_route(filepath):
 
 
 def get_table_name_from_filepath(filepath) -> str:
-    return f"bgprib_{pathlib.Path(filepath).stem.replace('.','')}"
+    return f"bgprib_{pathlib.Path(filepath).stem.replace('bz2','').replace('.','')}"
 
 
 def get_dump_files() -> list:
@@ -170,8 +171,7 @@ def get_dump_files() -> list:
     return files
 
 
-def get_record_count(filepath) -> int:
-    table_name = get_table_name_from_filepath(filepath=filepath)
+def get_record_count(table_name) -> int:
     sql = f"SELECT count(*) from {table_name};"
 
     with connect() as con:
@@ -181,10 +181,9 @@ def get_record_count(filepath) -> int:
             return count
 
 
-def is_table_exists(filepath) -> bool:
-    count = 0
+def is_table_exists(table_name) -> bool:
     try:
-        return get_record_count(filepath) > 0  # レコード0なら意味無し
+        return get_record_count(table_name=table_name) > 0  # レコード0なら意味無し
     except Exception as e:
         logger.error("table lookup error")
         logger.error(e)
@@ -204,7 +203,9 @@ def has_valid_record(filepath) -> bool:
     # tableのレコード数がファイルと等しいかどうか
     cmd = f"bgpdump -m {filepath} | wc -l"
     try:
-        count_from_dump_file = int(localExecCaptureOutput(cmd).strip())
+        stdout = localExecCaptureOutput(cmd).strip()
+        logger.info(stdout)
+        count_from_dump_file = int(stdout)
         logger.info(
             f"filepath: {filepath} dumpfile record count: {count_from_dump_file}")
     except ValueError as e:
@@ -212,7 +213,8 @@ def has_valid_record(filepath) -> bool:
         logger.Error("bgpdump parse error")
         return False
     try:
-        count_from_db = get_record_count(filepath=filepath)
+        table_name = get_table_name_from_filepath(filepath=filepath)
+        count_from_db = get_record_count(table_name=table_name)
         logger.info(f"filepath: {filepath} DB record count: {count_from_db}")
     except Exception as e:
         logger.error("table lookup error")
@@ -227,17 +229,17 @@ def main():
         "BGPRECORDER_CACHE_FILE", default="./bgprecorder.db"), True)  # auto dump
     sleep_second = int(os.getenv("BGPRECORDER_DURATION", default="3600"))
     is_compress = os.getenv("BGPRECORDER_COMPRESS", default=True)
-
     while True:
         logger.info("Cycle started.")
         # get current dump files
         files = get_dump_files()
         for file in files:
+            table_name = get_table_name_from_filepath(filepath=file)
             logger.info(f"Check file:{file}")
 
             # check valid flag
-            if saved_file_cache.get(file):
-                logger.info(f"Already registered: {file}")
+            if saved_file_cache.get(table_name):
+                logger.info(f"Already recorded: {file}")
                 if is_compress:
                     logger.info(f"file: {file} try to compress....")
                     if bzip2(file):
@@ -245,13 +247,13 @@ def main():
                 continue
 
             # set valid flag
-            if has_valid_record:
-                logger.info(f"DB Record is Valid: {file}")
-                saved_file_cache.set(file, True)
-                continue
+            if is_table_exists(table_name=table_name):
+                logger.info(f"Already registered: {file}")
+                logger.info(f"set valid flag")
+                saved_file_cache.set(table_name, True)
 
             # 正常に登録できてないor新規なので一旦flagをfalseにする．
-            saved_file_cache.set(file, False)
+            saved_file_cache.set(table_name, False)
 
             # exists check
             if not pathlib.Path(file).exists():
