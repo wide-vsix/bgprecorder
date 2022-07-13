@@ -126,18 +126,8 @@ def create_new_table(tablename):
 def create_table_and_insert_route(filepath):
     # It takes about 20 sec. per IPv6 fullroutes.
     # filepath = "mrt/20220711.1647.dump"
-    filename = pathlib.Path(filepath).name
     table_name = get_table_name_from_filepath(filepath=filepath)
     cmd = f"bgpdump -m {filepath}"
-
-    # exists check
-    if not pathlib.Path(filepath).exists():
-        logger.warning("File not found. ignore")
-        return False
-    # check emptyfile or not
-    if not os.stat(filepath).st_size > 0:
-        logger.warning("Empty file. ignore")
-        return False
 
     # create table
     if not create_new_table(table_name):
@@ -173,13 +163,15 @@ def get_dump_files():
 def is_table_exists(filepath):
     table_name = get_table_name_from_filepath(filepath=filepath)
 
-    sql = "SELECT count(*) from %s;"
+    sql = f"SELECT count(*) from {table_name};"
 
     with connect() as con:
         with con.cursor() as cur:
             try:
-                cur.execute(sql, [table_name])
-                cur.fetchone()
+                cur.execute(sql)
+                record = cur.fetchone()
+                logger.info(record)
+
             except Exception as e:
                 logger.error("table lookup error")
                 logger.error(e)
@@ -204,19 +196,28 @@ def main():
             if saved_file_cache.get(file) and is_table_exists(filepath=file):
                 logger.info(f"Already registered: {file}")
                 if is_compress:
+                    logger.info(f"file: {file} try to compress....")
                     if bzip2(file):
                         logger.info(f"file: {file} is compressed.")
                 continue
-            # 正常に登録できてないので一旦flagをfalseにする． 誤ってsetされているとこうなる．
+
+            # 正常に登録できてないor新規なので一旦flagをfalseにする． 誤ってsetされているとこうなる．
             saved_file_cache.set(file, False)
+
+            # exists check
+            if not pathlib.Path(file).exists():
+                logger.warning("File not found. ignore")
+                continue
+            # check emptyfile or not
+            if not os.stat(file).st_size > 0:
+                logger.warning("Empty file. ignore")
+                continue
 
             logger.info(f"file: {file} found! try to record...")
             if create_table_and_insert_route(file):
                 logger.info(f"file: {file} is successfully recorded.")
                 saved_file_cache.set(file, True)  # successfully flag
-                if is_compress:
-                    if bzip2(file):
-                        logger.info(f"file: {file} is compressed.")
+                # compress when next reconcile
             else:
                 logger.error(f"file: {file} could not be recorded.")
 
