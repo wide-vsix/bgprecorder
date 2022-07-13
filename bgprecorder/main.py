@@ -135,6 +135,10 @@ def create_table_and_insert_route(filepath):
     table_name = get_table_name_from_filepath(filepath=filepath)
     cmd = f"bgpdump -m {filepath}"
 
+    # drop table if exists
+    if is_table_exists(table_name):
+        drop_table(table_name=table_name)
+
     # create table
     if not create_new_table(table_name):
         logger.Error("Can not create table. abort")
@@ -185,6 +189,15 @@ def is_table_exists(filepath) -> bool:
         logger.error("table lookup error")
         logger.error(e)
         return False
+
+
+def drop_table(table_name) -> bool:
+    sql = f"DROP TABLE {table_name};"
+    with connect() as con:
+        with con.cursor() as cur:
+            cur.execute(sql)
+        con.commit()
+    return True
 
 
 def has_valid_record(filepath) -> bool:
