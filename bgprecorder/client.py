@@ -34,7 +34,14 @@ def connect():
 
 
 def get_tables() -> list:
-    sql = "select pg_stat_user_tables.relname from pg_stat_user_tables order by relname asc;"  # 新しいもの順
+    sql = '''
+    SELECT 
+    pg_class.relname 
+    FROM pg_stat_user_tables
+    INNER JOIN pg_class ON pg_stat_user_tables.relname = pg_class.relname
+    where pg_class.reltuples > 1
+    order by relname asc;
+    '''
     with connect() as con:
         with con.cursor() as cur:
             cur.execute(sql)
