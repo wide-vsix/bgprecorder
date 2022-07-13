@@ -1,4 +1,4 @@
 docker-compose.yml
-.env
+.env*
 ssh
 backup
