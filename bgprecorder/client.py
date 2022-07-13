@@ -35,8 +35,8 @@ def connect():
 
 def get_tables() -> list:
     sql = '''
-    SELECT 
-    pg_class.relname 
+    SELECT
+    pg_class.relname
     FROM pg_stat_user_tables
     INNER JOIN pg_class ON pg_stat_user_tables.relname = pg_class.relname
     where pg_class.reltuples > 1
@@ -85,7 +85,7 @@ def get_args():
     parser.add_argument('-a', '--address', type=str,
                         help='target address', required=True)
     parser.add_argument('-d', '--datetime', default=None, type=str,
-                        help=f'target datetime. format:{DATETIME_FORMAT}')
+                        help=f'target datetime. example: "200601021504"')
     return parser.parse_args()
 
 
