@@ -185,8 +185,6 @@ def is_table_exists(table_name) -> bool:
     try:
         return get_record_count(table_name=table_name) > 0  # レコード0なら意味無し
     except Exception as e:
-        logger.error("table lookup error")
-        logger.error(e)
         return False
 
 
