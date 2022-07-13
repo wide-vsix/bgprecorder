@@ -15,6 +15,12 @@ def localExec(cmd):
     return proc.returncode == 0
 
 
+def localExecCaptureOutput(cmd):
+    proc = subprocess.run(
+        cmd, shell=True, capture_output=True, text=True)
+    return proc.stdout
+
+
 def bzip2(filename, delete_src=True):
     delete_options = "" if delete_src else "-k"
     cmd = f"bzip2 {delete_options} {filename}"
@@ -149,34 +155,58 @@ def create_table_and_insert_route(filepath):
     return insert_successed
 
 
-def get_table_name_from_filepath(filepath):
+def get_table_name_from_filepath(filepath) -> str:
     return f"bgprib_{pathlib.Path(filepath).stem.replace('.','')}"
 
 
-def get_dump_files():
+def get_dump_files() -> list:
     target_match = os.getenv(
         "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump")
     files = glob.glob(f"{target_match}")
     return files
 
 
-def is_table_exists(filepath):
+def get_record_count(filepath) -> int:
     table_name = get_table_name_from_filepath(filepath=filepath)
-
     sql = f"SELECT count(*) from {table_name};"
 
     with connect() as con:
         with con.cursor() as cur:
-            try:
-                cur.execute(sql)
-                record = cur.fetchone()
-                logger.info(record)
+            cur.execute(sql)
+            count = cur.fetchone()[0]
+            return count
 
-            except Exception as e:
-                logger.error("table lookup error")
-                logger.error(e)
-                return False
-    return True
+
+def is_table_exists(filepath) -> bool:
+    count = 0
+    try:
+        return get_record_count(filepath) > 0  # レコード0なら意味無し
+    except Exception as e:
+        logger.error("table lookup error")
+        logger.error(e)
+        return False
+
+
+def has_valid_record(filepath) -> bool:
+    # tableのレコード数がファイルと等しいかどうか
+    cmd = f"bgpdump -m {filepath} | wc -l"
+    try:
+        count_from_dump_file = int(localExecCaptureOutput(cmd).strip())
+        logger.info(
+            f"filepath: {filepath} dumpfile record count: {count_from_dump_file}")
+    except ValueError as e:
+        # outputが数字じゃない何かだった
+        logger.Error("bgpdump parse error")
+        return False
+    try:
+        count_from_db = get_record_count(filepath=filepath)
+        logger.info(f"filepath: {filepath} DB record count: {count_from_db}")
+    except Exception as e:
+        logger.error("table lookup error")
+        logger.error(e)
+        return False
+
+    return count_from_dump_file == count_from_db
 
 
 def main():
@@ -192,8 +222,8 @@ def main():
         for file in files:
             logger.info(f"Check file:{file}")
 
-            # check already exists or not
-            if saved_file_cache.get(file) and is_table_exists(filepath=file):
+            # check valid flag
+            if saved_file_cache.get(file):
                 logger.info(f"Already registered: {file}")
                 if is_compress:
                     logger.info(f"file: {file} try to compress....")
@@ -201,7 +231,13 @@ def main():
                         logger.info(f"file: {file} is compressed.")
                 continue
 
-            # 正常に登録できてないor新規なので一旦flagをfalseにする． 誤ってsetされているとこうなる．
+            # set valid flag
+            if has_valid_record:
+                logger.info(f"DB Record is Valid: {file}")
+                saved_file_cache.set(file, True)
+                continue
+
+            # 正常に登録できてないor新規なので一旦flagをfalseにする．
             saved_file_cache.set(file, False)
 
             # exists check
@@ -216,8 +252,7 @@ def main():
             logger.info(f"file: {file} found! try to record...")
             if create_table_and_insert_route(file):
                 logger.info(f"file: {file} is successfully recorded.")
-                saved_file_cache.set(file, True)  # successfully flag
-                # compress when next reconcile
+                # validation check when next reconcile?
             else:
                 logger.error(f"file: {file} could not be recorded.")
 
