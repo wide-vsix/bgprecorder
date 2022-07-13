@@ -2,3 +2,4 @@ docker-compose.yml
 .env*
 ssh
 backup
+__pycache__
