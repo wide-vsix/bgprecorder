@@ -95,9 +95,9 @@ def insert_route(route_obj, con, table_name):
         return False
 
 
-def create_new_table(tablename):
+def create_new_table(table_name):
     sql = f'''
-    create table {tablename}
+    create table {table_name}
     (
         id SERIAL NOT NULL,
         time timestamp,
@@ -122,7 +122,7 @@ def create_new_table(tablename):
                 cur.execute(sql)
             con.commit()
     except psycopg2.errors.DuplicateTable as e:
-        logger.warning(f"Table:{tablename} is already exists. ignore")
+        logger.warning(f"Table:{table_name} is already exists. ignore")
     except Exception as e:
         logger.error("Create Table Error")
         logger.error(e)
@@ -130,11 +130,11 @@ def create_new_table(tablename):
     return True
 
 
-def create_table_and_insert_route(filepath):
+def create_table_and_insert_route(file_path):
     # It takes about 20 sec. per IPv6 fullroutes.
-    # filepath = "mrt/20220711.1647.dump"
-    table_name = get_table_name_from_filepath(filepath=filepath)
-    cmd = f"bgpdump -m {filepath}"
+    # file_path = "mrt/20220711.1647.dump"
+    table_name = get_table_name_from_file_path(file_path=file_path)
+    cmd = f"bgpdump -m {file_path}"
 
     # drop table if exists
     if is_table_exists(table_name):
@@ -160,8 +160,8 @@ def create_table_and_insert_route(filepath):
     return insert_successed
 
 
-def get_table_name_from_filepath(filepath) -> str:
-    return f"bgprib_{pathlib.Path(filepath).stem.replace('bz2','').replace('.','')}"
+def get_table_name_from_file_path(file_path) -> str:
+    return f"bgprib_{pathlib.Path(file_path).stem.replace('bz2','').replace('.','')}"
 
 
 def get_dump_files() -> list:
@@ -197,23 +197,23 @@ def drop_table(table_name) -> bool:
     return True
 
 
-def has_valid_record(filepath) -> bool:
+def has_valid_record(file_path) -> bool:
     # tableのレコード数がファイルと等しいかどうか
-    cmd = f"bgpdump -m {filepath} | wc -l"
+    cmd = f"bgpdump -m {file_path} | wc -l"
     try:
         stdout = localExecCaptureOutput(cmd).strip()
         logger.info(stdout)
         count_from_dump_file = int(stdout)
         logger.info(
-            f"filepath: {filepath} dumpfile record count: {count_from_dump_file}")
+            f"file_path: {file_path} dumpfile record count: {count_from_dump_file}")
     except ValueError as e:
         # outputが数字じゃない何かだった
         logger.Error("bgpdump parse error")
         return False
     try:
-        table_name = get_table_name_from_filepath(filepath=filepath)
+        table_name = get_table_name_from_file_path(file_path=file_path)
         count_from_db = get_record_count(table_name=table_name)
-        logger.info(f"filepath: {filepath} DB record count: {count_from_db}")
+        logger.info(f"file_path: {file_path} DB record count: {count_from_db}")
     except Exception as e:
         logger.error("table lookup error")
         logger.error(e)
@@ -232,7 +232,7 @@ def main():
         # get current dump files
         files = get_dump_files()
         for file in files:
-            table_name = get_table_name_from_filepath(filepath=file)
+            table_name = get_table_name_from_file_path(file_path=file)
             logger.info(f"Check file:{file}")
 
             # check valid flag
