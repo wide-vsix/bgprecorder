@@ -127,7 +127,7 @@ def create_table_and_insert_route(filepath):
     # It takes about 20 sec. per IPv6 fullroutes.
     # filepath = "mrt/20220711.1647.dump"
     filename = pathlib.Path(filepath).name
-    table_name = f"bgprib_{pathlib.Path(filepath).stem.replace('.','')}"
+    table_name = get_table_name_from_filepath(filepath=filepath)
     cmd = f"bgpdump -m {filepath}"
 
     # exists check
@@ -159,11 +159,32 @@ def create_table_and_insert_route(filepath):
     return insert_successed
 
 
+def get_table_name_from_filepath(filepath):
+    return f"bgprib_{pathlib.Path(filepath).stem.replace('.','')}"
+
+
 def get_dump_files():
     target_match = os.getenv(
         "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump")
     files = glob.glob(f"{target_match}")
     return files
+
+
+def is_table_exists(filepath):
+    table_name = get_table_name_from_filepath(filepath=filepath)
+
+    sql = "SELECT count(*) from %s"
+
+    with connect() as con:
+        with con.cursor() as cur:
+            try:
+                cur.execute(sql, [table_name])
+                cur.fetchone()
+            except Exception as e:
+                logger.Error("table lookup error")
+                logger.Error(e)
+                return False
+    return True
 
 
 def main():
@@ -178,7 +199,7 @@ def main():
         files = get_dump_files()
         for file in files:
             logger.info(f"Check file:{file}")
-            if not saved_file_cache.get(file):
+            if not saved_file_cache.get(file) and not is_table_exists(filepath=file):
                 logger.info(f"file: {file} found! try to record...")
                 if create_table_and_insert_route(file):
                     logger.info(f"file: {file} is successfully recorded.")
