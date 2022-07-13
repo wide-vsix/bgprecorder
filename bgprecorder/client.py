@@ -89,6 +89,15 @@ def get_args():
     return parser.parse_args()
 
 
+def longest_match(routes) -> list:
+    longest_prefix = 0
+    for route in routes:
+        prefixlen = ipaddress.ip_network(route["nlri"]).prefixlen
+        if prefixlen >= longest_prefix:
+            longest_prefix = prefixlen
+    return [route for route in routes if ipaddress.ip_network(route["nlri"]).prefixlen == longest_prefix]
+
+
 if __name__ == "__main__":
     args = get_args()
 
@@ -100,5 +109,6 @@ if __name__ == "__main__":
 
     routes = get_routes_from_address_and_datetime(
         address=address, target_datetime=dt)
-    for route in routes:
+    matched_routes = longest_match(routes)
+    for route in matched_routes:
         print(json.dumps(route, default=json_serial_default))
