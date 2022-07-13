@@ -173,7 +173,7 @@ def get_dump_files():
 def is_table_exists(filepath):
     table_name = get_table_name_from_filepath(filepath=filepath)
 
-    sql = "SELECT count(*) from %s"
+    sql = "SELECT count(*) from %s;"
 
     with connect() as con:
         with con.cursor() as cur:
@@ -181,8 +181,8 @@ def is_table_exists(filepath):
                 cur.execute(sql, [table_name])
                 cur.fetchone()
             except Exception as e:
-                logger.Error("table lookup error")
-                logger.Error(e)
+                logger.error("table lookup error")
+                logger.error(e)
                 return False
     return True
 
