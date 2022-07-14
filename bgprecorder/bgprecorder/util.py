@@ -1,11 +1,11 @@
 from datetime import datetime, date
-import os
-import psycopg2
 import ipaddress
 import subprocess
 
-from psycopg2.extras import DictCursor
+import glob
+import pathlib
 
+from .bgprecorder import BgpRecorder
 
 '''
 
@@ -83,3 +83,15 @@ def parse_bgpdump_record_to_route_obj(bgpdump_record: str) -> dict:
         # large_community
     }
     return route_obj
+
+
+def get_files(match_rule: str) -> list:
+    files = glob.glob(f"{match_rule}")
+    return files
+
+
+def get_table_name_from_file_path(file_path: str) -> str:
+    prefix = BgpRecorder.table_name_prefix
+    table_name_origin = pathlib.Path(
+        file_path).stem.replace('bz2', '').replace('.', '')
+    return prefix + table_name_origin

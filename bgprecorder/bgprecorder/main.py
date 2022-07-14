@@ -6,7 +6,7 @@ from logzero import logger
 import pickledb
 import glob
 import time
-import util
+import bgprecorder.bgprecorder.util as util
 
 
 def parse_record(record: str):
@@ -118,10 +118,6 @@ def create_table_and_insert_route(file_path):
     return insert_successed
 
 
-def get_table_name_from_file_path(file_path) -> str:
-    return f"bgprib_{pathlib.Path(file_path).stem.replace('bz2','').replace('.','')}"
-
-
 def get_dump_files() -> list:
     target_match = os.getenv(
         "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump")
@@ -153,31 +149,6 @@ def drop_table(table_name) -> bool:
             cur.execute(sql)
         con.commit()
     return True
-
-
-def has_valid_record(file_path) -> bool:
-    # tableのレコード数がファイルと等しいかどうか
-    cmd = f"bgpdump -m {file_path} | wc -l"
-    try:
-        stdout = util.localExecCaptureOutput(cmd).strip()
-        logger.info(stdout)
-        count_from_dump_file = int(stdout)
-        logger.info(
-            f"file_path: {file_path} dumpfile record count: {count_from_dump_file}")
-    except ValueError as e:
-        # outputが数字じゃない何かだった
-        logger.Error("bgpdump parse error")
-        return False
-    try:
-        table_name = get_table_name_from_file_path(file_path=file_path)
-        count_from_db = get_record_count(table_name=table_name)
-        logger.info(f"file_path: {file_path} DB record count: {count_from_db}")
-    except Exception as e:
-        logger.error("table lookup error")
-        logger.error(e)
-        return False
-
-    return count_from_dump_file == count_from_db
 
 
 def main():
