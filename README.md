@@ -1,36 +1,33 @@
 # bgp route collector
 
-MRT formated bgp rib dump  to psql
+Create a BGP RIB time series database from MRT format dump files.
 
-```yaml
-version: "3"
-services:
-  cron:
-    image: ghcr.io/wide-vsix/simple-cron:latest
-    environment:
-      TZ: Asia/Tokyo
-      CRON_OPTION: "0 3 * * *" # once a day
-      CRON_COMMAND: |
-        # rsync flom remote
-        rsync -tvz -6 vsix@ex-collector:/var/log/gobgp/ribs/*.dump /backup"
+## how to deploy
+### docker
+1. Create docker-compose.yml with reference to docker-compose.sample.yml.
+2. Create .env
+```
+BGPRECORDER_DB_HOST=postgres
+BGPRECORDER_DB_PORT=5432
+BGPRECORDER_DB_NAME=bgprecorder
+BGPRECORDER_DB_USER=postgres
+BGPRECORDER_DB_PASSWORD=PASSWORD
 
-        # delete 14 days age files
-        find /var/log/gobgp/ribs/ -type f -name "*.dump*" -mtime +14 | xargs -I arg echo Dlete file: arg
-        find /var/log/gobgp/ribs/ -type f -name "*.dump*" -mtime +14 | xargs -I arg rm arg
-        # compress 7 days ages file
-        find /var/log/gobgp/ribs/ -type f -name "*.dump" -mtime +7  | xargs -I arg echo Compress file: arg
-        find /var/log/gobgp/ribs/ -type f -name "*.dump" -mtime +7  | xargs -I arg bzip2 arg
-
-    volumes:
-      - /var/log/gobgp:/var/log/gobgp
+```
+3. run
+```
+docker-compose up -d
 ```
 
+
+### native install
+TBD
 
 ## demo
-`bgprecorder/client.py` 
-
+- bgpquery
 ```
-(bgprecorder-ymYf6BG--py3.8) yas-nyan@analysis:~/bgprecorder$ python3 bgprecorder/client.py  -a 3ffe::114  -d 202207131800  | jq
+$ bash misc/env.sh
+$ bgpquery -a 3ffe::114  -d 202207131800  | jq
 {
   "id": 13735,
   "time": "2022-07-13T17:00:32",
