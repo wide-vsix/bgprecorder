@@ -1,6 +1,7 @@
 import imp
 from datetime import datetime
 import psycopg2
+import psycopg2.extras
 from logzero import logger
 
 
@@ -19,7 +20,7 @@ class BgpRecorder():
         self.db_user = db_user
         self.db_password = db_password
 
-    def __get_db_connection(self) -> psycopg2.extensions.connection:
+    def get_db_connection(self) -> psycopg2.extensions.connection:
         con = psycopg2.connect(host=self.db_host, port=self.db_port,
                                dbname=self.db_name, user=self.db_user, password=self.db_password)
         return con
@@ -37,7 +38,7 @@ class BgpRecorder():
         where pg_class.reltuples > 1
         order by relname asc;
         '''
-        with self.__get_db_connection() as con:
+        with self.get_db_connection() as con:
             with con.cursor() as cur:
                 cur.execute(sql)
                 rows = cur.fetchall()  # [('bgprib_202207080313',),...]
@@ -61,7 +62,7 @@ class BgpRecorder():
     def get_routes_from_address(self, address: str, table_name: str) -> list:
         sql = f"select * from {table_name} where inet %s << {table_name}.nlri;"
 
-        with self.__get_db_connection() as con:
+        with self.get_db_connection() as con:
             with con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute(sql, [address])
                 rows = cur.fetchall()
@@ -75,7 +76,7 @@ class BgpRecorder():
     def get_route_count(self, table_name: str) -> int:
         sql = f"SELECT count(*) from {table_name};"
 
-        with self.__get_db_connection() as con:
+        with self.get_db_connection() as con:
             with con.cursor() as cur:
                 cur.execute(sql)
                 count = cur.fetchone()[0]
@@ -90,7 +91,7 @@ class BgpRecorder():
 
     def drop_table(self, table_name: str) -> bool:
         sql = f"DROP TABLE {table_name};"
-        with self.__get_db_connection() as con:
+        with self.get_db_connection() as con:
             with con.cursor() as cur:
                 cur.execute(sql)
             con.commit()
@@ -131,7 +132,7 @@ class BgpRecorder():
         );
         '''
         try:
-            with self.__get_db_connection() as con:
+            with self.get_db_connection() as con:
                 with con.cursor() as cur:
                     cur.execute(sql)
                 con.commit()
@@ -147,7 +148,7 @@ class BgpRecorder():
         sql = self.__query_buildar(route_obj, table_name)
         try:
             if con is None:
-                with self.__get_db_connection() as con:
+                with self.get_db_connection() as con:
                     with con.cursor() as cur:
                         cur.execute(sql, list(route_obj.values()))
                     return True
@@ -156,6 +157,6 @@ class BgpRecorder():
                     cur.execute(sql, list(route_obj.values()))
                 return True
         except Exception as e:
-            logger.Error("DB Error. Can not insert record.")
-            logger.Error(e)
+            logger.error("DB Error. Can not insert record.")
+            logger.error(e)
             return False
