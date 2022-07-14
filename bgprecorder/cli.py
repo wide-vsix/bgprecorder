@@ -16,11 +16,21 @@ def query():
     Client CLI tool
     '''
     parser = argparse.ArgumentParser(
-        description='This is sample argparse script')
+        description='bgpquery: get BGP rib json from bgprecorder db')
     parser.add_argument('-a', '--address', type=str,
                         help='target address', required=True)
-    parser.add_argument('-d', '--datetime', default=None, type=str,
+    parser.add_argument('-t', '--datetime', default=None, type=str,
                         help=f'target datetime. example: "200601021504"')
+    parser.add_argument('-H', '--db_host', default=os.getenv("BGPRECORDER_DB_HOST", "localhost"), type=str,
+                        help=f'db host. default: localhost or $BGPRECORDER_DB_HOST')
+    parser.add_argument('-p', '--db_port', default=int(os.getenv("BGPRECORDER_DB_PORT", "5432")), type=int,
+                        help=f'db port. default: 5432 or $BGPRECORDER_DB_PORT')
+    parser.add_argument('-u', '--db_user', default=os.getenv("BGPRECORDER_DB_USER", "postgres"), type=str,
+                        help=f'db user. default: postgres or $BGPRECORDER_DB_USER')
+    parser.add_argument('-w', '--db_password', default=os.getenv("BGPRECORDER_DB_PASSWORD"), type=str,
+                        help=f'db user. default: None or $BGPRECORDER_DB_PASSWORD ')
+    parser.add_argument('-d', '--db_name', default=os.getenv("BGPRECORDER_DB_NAME", "bgprecorder"), type=str,
+                        help=f'db user. default: bgprecorder or $BGPRECORDER_DB_RECORDER')
 
     args = parser.parse_args()
 
@@ -31,14 +41,8 @@ def query():
         target_datetime = datetime.strptime(
             args.datetime, BgpRecorder.datetime_format)
 
-    db_host = os.getenv("BGPRECORDER_DB_HOST")
-    db_port = int(os.getenv("BGPRECORDER_DB_PORT", "5432"))
-    db_name = os.getenv("BGPRECORDER_DB_NAME")
-    db_user = os.getenv("BGPRECORDER_DB_USER")
-    db_password = os.getenv("BGPRECORDER_DB_PASSWORD")
-
-    br = BgpRecorder(db_host=db_host, db_port=db_port,
-                     db_name=db_name, db_user=db_user, db_password=db_password)
+    br = BgpRecorder(db_host=args.db_host, db_port=args.db_port,
+                     db_name=args.db_name, db_user=args.db_user, db_password=args.db_password)
 
     routes = br.get_routes_from_address_and_datetime(
         address=address, target_datetime=target_datetime)
@@ -50,27 +54,39 @@ def query():
 
 
 def recorder():
+    parser = argparse.ArgumentParser(
+        description='bgprecord dump BGP MRT rib to DB')
+    parser.add_argument('-H', '--db_host', default=os.getenv("BGPRECORDER_DB_HOST", "localhost"), type=str,
+                        help=f'db host. default: localhost or $BGPRECORDER_DB_HOST')
+    parser.add_argument('-p', '--db_port', default=int(os.getenv("BGPRECORDER_DB_PORT", "5432")), type=int,
+                        help=f'db port. default: 5432 or $BGPRECORDER_DB_PORT')
+    parser.add_argument('-u', '--db_user', default=os.getenv("BGPRECORDER_DB_USER", "postgres"), type=str,
+                        help=f'db user. default: postgres or $BGPRECORDER_DB_USER')
+    parser.add_argument('-w', '--db_password', default=os.getenv("BGPRECORDER_DB_PASSWORD"), type=str,
+                        help=f'db password. default: None or $BGPRECORDER_DB_PASSWORD')
+    parser.add_argument('-d', '--db_name', default=os.getenv("BGPRECORDER_DB_NAME", "bgprecorder"), type=str,
+                        help=f'db name. default: bgprecorder or $BGPRECORDER_DB_RECORDER')
+    parser.add_argument('-c', '--compress', default=False, type=bool,
+                        help=f'compress MRT dump after import. default: False')
+    parser.add_argument('-i', '--duration', default=int(os.getenv("BGPRECORDER_DURATION", default="3600")), type=int,
+                        help=f'interval of recording (sec.) default: 3600 or $BGPRECORDER_DURATION')
+    parser.add_argument('-f', '--mrt_dump_files', default=os.getenv(
+        "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump"), type=bool,
+        help=f'target MRT dumpfile match rule.  default: ./mrt/*.dump or $BGPRECORDER_DURATION')
+
+    args = parser.parse_args()
+
     saved_file_cache = pickledb.load(os.getenv(
-        "BGPRECORDER_CACHE_FILE", default="./bgprecorder.db"), True)  # auto dump
-    sleep_second = int(os.getenv("BGPRECORDER_DURATION", default="3600"))
-    is_compress = os.getenv("BGPRECORDER_COMPRESS", default=True)
+        "BGPRECORDER_CACHE_FILE", default="/tmp/bgprecorder.db"), True)  # auto dump
+    args.mrt_dump_files = args.mrt_dump_files
 
-    dump_file_match_rule = os.getenv(
-        "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump")
-
-    db_host = os.getenv("BGPRECORDER_DB_HOST")
-    db_port = int(os.getenv("BGPRECORDER_DB_PORT", "5432"))
-    db_name = os.getenv("BGPRECORDER_DB_NAME")
-    db_user = os.getenv("BGPRECORDER_DB_USER")
-    db_password = os.getenv("BGPRECORDER_DB_PASSWORD")
-
-    br = BgpRecorder(db_host=db_host, db_port=db_port,
-                     db_name=db_name, db_user=db_user, db_password=db_password)
+    br = BgpRecorder(db_host=args.db_host, db_port=args.db_port,
+                     db_name=args.db_name, db_user=args.db_user, db_password=args.db_password)
 
     while True:
         logger.info("Cycle started.")
         # get current dump files
-        files = util.get_files(dump_file_match_rule)
+        files = util.get_files(args.mrt_dump_files)
 
         for file in files:
             table_name = util.get_table_name_from_file_path(file_path=file)
@@ -79,7 +95,7 @@ def recorder():
             # check valid flag
             if saved_file_cache.get(table_name):
                 logger.info(f"Already recorded: {file}")
-                if is_compress:
+                if args.compress:
                     logger.info(f"file: {file} try to compress....")
                     if util.bzip2(file):
                         logger.info(f"file: {file} is compressed.")
@@ -111,8 +127,8 @@ def recorder():
             else:
                 logger.error(f"file: {file} could not be recorded.")
 
-        logger.info(f"Cycle finished. sleep {sleep_second} sec.")
-        time.sleep(sleep_second)
+        logger.info(f"Cycle finished. sleep {args.duration} sec.")
+        time.sleep(args.duration)
 
 
 def __create_table_and_insert_route(br: BgpRecorder, file_path: str) -> bool:
