@@ -1,5 +1,3 @@
-from distutils.command.config import dump_file
-from msilib.schema import tables
 from logzero import logger
 import pickledb
 import argparse
@@ -72,7 +70,7 @@ def recorder():
     while True:
         logger.info("Cycle started.")
         # get current dump files
-        files = util.get_dump_files(dump_file_match_rule)
+        files = util.get_files(dump_file_match_rule)
 
         for file in files:
             table_name = util.get_table_name_from_file_path(file_path=file)
@@ -107,7 +105,7 @@ def recorder():
                 continue
 
             logger.info(f"file: {file} found! try to record...")
-            if __create_table_and_insert_route(file):
+            if __create_table_and_insert_route(br=br, file_path=file):
                 logger.info(f"file: {file} is successfully recorded.")
                 # validation check when next reconcile?
             else:
@@ -128,22 +126,26 @@ def __create_table_and_insert_route(br: BgpRecorder, file_path: str) -> bool:
         br.drop_table(table_name=table_name)
 
     # create table
-    if not br.create_new_table(table_name):
-        logger.Error("Can not create table. abort")
+    if not br.create_new_rib_table(table_name):
+        logger.error("Can not create table. abort")
         return False
 
     # insert
     insert_successed = False
-    with br.__get_db_connection() as con:
+    with br.get_db_connection() as con:
         for line in util.localExecGetLines(cmd):
             route_obj = util.parse_bgpdump_record_to_route_obj(
                 line.decode().strip())
 
-            if not br.insert_route(route_obj, con, table_name):
-                logger.Error("Insert Error")
+            if not br.insert_route(route_obj=route_obj, table_name=table_name, con=con):
+                logger.error("Insert Error")
                 con.cancel()
                 break
         else:
             con.commit()
             insert_successed = True
     return insert_successed
+
+
+if __name__ == "__main__":
+    recorder()
