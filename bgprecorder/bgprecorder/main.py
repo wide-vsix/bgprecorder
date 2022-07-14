@@ -2,53 +2,11 @@ import psycopg2
 import os
 import pathlib
 from datetime import datetime
-import subprocess
 from logzero import logger
 import pickledb
-import sys
 import glob
 import time
-
-
-def localExec(cmd):
-    proc = subprocess.run(
-        cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return proc.returncode == 0
-
-
-def localExecCaptureOutput(cmd):
-    proc = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True)
-    return proc.stdout
-
-
-def bzip2(filename, delete_src=True):
-    delete_options = "" if delete_src else "-k"
-    cmd = f"bzip2 {delete_options} {filename}"
-    return localExec(cmd)
-
-
-def localExecGetLines(cmd):
-    proc = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    while True:
-        line = proc.stdout.readline()
-        if line:
-            yield line
-
-        if not line and proc.poll() is not None:
-            break
-
-
-def connect():
-    host = os.getenv("BGPRECORDER_DB_HOST")
-    port = int(os.getenv("BGPRECORDER_DB_PORT", "5432"))
-    dbname = os.getenv("BGPRECORDER_DB_NAME")
-    user = os.getenv("BGPRECORDER_DB_USER")
-    password = os.getenv("BGPRECORDER_DB_PASSWORD")
-    con = psycopg2.connect(host=host, port=port,
-                           dbname=dbname, user=user, password=password)
-    return con
+import util
 
 
 def parse_record(record: str):
@@ -117,7 +75,7 @@ def create_new_table(table_name):
     );
     '''
     try:
-        with connect() as con:
+        with util.connect() as con:
             with con.cursor() as cur:
                 cur.execute(sql)
             con.commit()
@@ -147,8 +105,8 @@ def create_table_and_insert_route(file_path):
 
     # insert
     insert_successed = False
-    with connect() as con:
-        for line in localExecGetLines(cmd):
+    with util.connect() as con:
+        for line in util.localExecGetLines(cmd):
             route_obj = parse_record(line.decode().strip())
             if not insert_route(route_obj, con, table_name):
                 logger.Error("Insert Error")
@@ -174,7 +132,7 @@ def get_dump_files() -> list:
 def get_record_count(table_name) -> int:
     sql = f"SELECT count(*) from {table_name};"
 
-    with connect() as con:
+    with util.connect() as con:
         with con.cursor() as cur:
             cur.execute(sql)
             count = cur.fetchone()[0]
@@ -190,7 +148,7 @@ def is_table_exists(table_name) -> bool:
 
 def drop_table(table_name) -> bool:
     sql = f"DROP TABLE {table_name};"
-    with connect() as con:
+    with util.connect() as con:
         with con.cursor() as cur:
             cur.execute(sql)
         con.commit()
@@ -201,7 +159,7 @@ def has_valid_record(file_path) -> bool:
     # tableのレコード数がファイルと等しいかどうか
     cmd = f"bgpdump -m {file_path} | wc -l"
     try:
-        stdout = localExecCaptureOutput(cmd).strip()
+        stdout = util.localExecCaptureOutput(cmd).strip()
         logger.info(stdout)
         count_from_dump_file = int(stdout)
         logger.info(
@@ -240,7 +198,7 @@ def main():
                 logger.info(f"Already recorded: {file}")
                 if is_compress:
                     logger.info(f"file: {file} try to compress....")
-                    if bzip2(file):
+                    if util.bzip2(file):
                         logger.info(f"file: {file} is compressed.")
                 continue
 

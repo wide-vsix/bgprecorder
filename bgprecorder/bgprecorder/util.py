@@ -1,8 +1,8 @@
-import json
 from datetime import datetime, date
 import os
 import psycopg2
 import ipaddress
+import subprocess
 
 from psycopg2.extras import DictCursor
 
@@ -82,3 +82,33 @@ def longest_match(routes) -> list:
         if prefixlen >= longest_prefix:
             longest_prefix = prefixlen
     return [route for route in routes if ipaddress.ip_network(route["nlri"]).prefixlen == longest_prefix]
+
+
+def localExec(cmd):
+    proc = subprocess.run(
+        cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return proc.returncode == 0
+
+
+def localExecCaptureOutput(cmd):
+    proc = subprocess.run(
+        cmd, shell=True, capture_output=True, text=True)
+    return proc.stdout
+
+
+def bzip2(filename, delete_src=True):
+    delete_options = "" if delete_src else "-k"
+    cmd = f"bzip2 {delete_options} {filename}"
+    return localExec(cmd)
+
+
+def localExecGetLines(cmd):
+    proc = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    while True:
+        line = proc.stdout.readline()
+        if line:
+            yield line
+
+        if not line and proc.poll() is not None:
+            break
