@@ -71,7 +71,7 @@ def recorder():
     parser.add_argument('-i', '--duration', default=int(os.getenv("BGPRECORDER_DURATION", default="3600")), type=int,
                         help=f'interval of recording (sec.) default: 3600 or $BGPRECORDER_DURATION')
     parser.add_argument('-f', '--mrt_dump_files', default=os.getenv(
-        "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump"), type=bool,
+        "BGPRECORDER_TARGET_FILES", default="./mrt/*.dump"), type=str,
         help=f'target MRT dumpfile match rule.  default: ./mrt/*.dump or $BGPRECORDER_DURATION')
 
     args = parser.parse_args()
