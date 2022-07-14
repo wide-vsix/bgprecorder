@@ -11,6 +11,10 @@ COPY poetry.lock  /opt/bgprecorder/
 COPY pyproject.toml  /opt/bgprecorder/
 RUN poetry install --no-dev
 
-COPY bgprecorder /opt/bgprecorder/bgprecorder
+COPY bgprecorder /opt/bgprecorder/bgprecorder 
+COPY README.md /opt/bgprecorder/
 
-CMD [ "poetry", "run", "bgprecorder"]
+RUN poetry build
+RUN pip install dist/*.whl
+
+CMD ["bgprecorder"]
