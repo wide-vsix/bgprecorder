@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bgprecorder"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["yas-nyan <yas-nyan@sfc.wide.ad.jp>"]
 
@@ -16,3 +16,6 @@ autopep8 = "^1.6.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+bgpquery ="bgprecorder.cli:query"
