@@ -9,6 +9,9 @@ import time
 
 from .bgprecorder import BgpRecorder
 from . import util
+from importlib import metadata
+
+__version__ = metadata.version(__package__)
 
 
 def query():
@@ -17,6 +20,9 @@ def query():
     '''
     parser = argparse.ArgumentParser(
         description='bgpquery: get BGP rib json from bgprecorder db')
+    parser.add_argument('--version', version='%(prog)s ' + __version__,
+                        action='version',
+                        default=False)
     parser.add_argument('-a', '--address', type=str,
                         help='target address', required=True)
     parser.add_argument('-t', '--datetime', default=None, type=str,
@@ -56,6 +62,9 @@ def query():
 def recorder():
     parser = argparse.ArgumentParser(
         description='bgprecord dump BGP MRT rib to DB')
+    parser.add_argument('--version', version='%(prog)s ' + __version__,
+                        action='version',
+                        default=False)
     parser.add_argument('-H', '--db_host', default=os.getenv("BGPRECORDER_DB_HOST", "localhost"), type=str,
                         help=f'db host. default: localhost or $BGPRECORDER_DB_HOST')
     parser.add_argument('-p', '--db_port', default=int(os.getenv("BGPRECORDER_DB_PORT", "5432")), type=int,
