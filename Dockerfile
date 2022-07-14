@@ -9,8 +9,8 @@ RUN poetry config virtualenvs.create false
 
 COPY poetry.lock  /opt/bgprecorder/
 COPY pyproject.toml  /opt/bgprecorder/
-RUN poetry install 
+RUN poetry install --no-dev
 
-COPY bgprecorder /opt/bgprecorder/
+COPY bgprecorder /opt/bgprecorder/bgprecorder
 
-CMD [ "poetry","run","python3","bgpmain.py" ]
+CMD [ "poetry", "run", "bgprecorder"]
