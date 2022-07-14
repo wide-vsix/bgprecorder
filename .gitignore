@@ -3,3 +3,5 @@ docker-compose.yml
 ssh
 backup
 __pycache__
+.venv
+.vscode
