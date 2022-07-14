@@ -85,7 +85,7 @@ class BgpRecorder():
     def is_table_exists(self, table_name: str) -> bool:
         try:
             # レコード0なら意味無し
-            return self.get_record_count(table_name=table_name) > 0
+            return self.get_route_count(table_name=table_name) > 0
         except Exception as e:
             return False
 

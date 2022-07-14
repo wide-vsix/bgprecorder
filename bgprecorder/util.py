@@ -93,5 +93,5 @@ def get_files(match_rule: str) -> list:
 def get_table_name_from_file_path(file_path: str) -> str:
     prefix = BgpRecorder.table_name_prefix
     table_name_origin = pathlib.Path(
-        file_path).stem.replace('bz2', '').replace('.', '')
+        file_path).stem.replace('bz2', '').replace('.', '').replace('dump', '')  # TODO refine
     return prefix + table_name_origin
