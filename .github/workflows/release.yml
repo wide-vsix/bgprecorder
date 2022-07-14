@@ -69,3 +69,18 @@ jobs:
           asset_path: ${{ env.ARTIFACT_PATHNAME }}
           asset_name: ${{ env.ARTIFACT_NAME }}
           asset_content_type: application/x-wheel+zip
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags:
+            - ghcr.io/wide-vsix/bgprecorder:latest
+            - ghcr.io/wide-vsix/bgprecorder:${{ github.event.inputs.version }}
