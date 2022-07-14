@@ -66,7 +66,7 @@ def recorder():
                         help=f'db password. default: None or $BGPRECORDER_DB_PASSWORD')
     parser.add_argument('-d', '--db_name', default=os.getenv("BGPRECORDER_DB_NAME", "bgprecorder"), type=str,
                         help=f'db name. default: bgprecorder or $BGPRECORDER_DB_RECORDER')
-    parser.add_argument('-c', '--compress', default=False, type=bool,
+    parser.add_argument('-c', '--compress', default=bool(os.getenv("BGPRECORDER_COMPRESS", False)), type=bool,
                         help=f'compress MRT dump after import. default: False')
     parser.add_argument('-i', '--duration', default=int(os.getenv("BGPRECORDER_DURATION", default="3600")), type=int,
                         help=f'interval of recording (sec.) default: 3600 or $BGPRECORDER_DURATION')
