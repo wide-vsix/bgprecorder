@@ -11,8 +11,6 @@ COPY poetry.lock  /opt/bgprecorder/
 COPY pyproject.toml  /opt/bgprecorder/
 RUN poetry install 
 
-COPY util.py /opt/bgprecorder/
-COPY main.py /opt/bgprecorder/
+COPY bgprecorder /opt/bgprecorder/
 
-
-CMD [ "poetry","run","python3","main.py" ]
+CMD [ "poetry","run","python3","bgpmain.py" ]
