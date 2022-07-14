@@ -28,14 +28,18 @@ jobs:
       - name: Add Poetry Plugin
         #  poetry plugin add poetry-version-plugin
         run: |
-          pip install poetry-version-plugin
+          poetry plugin add poetry-version-plugin
       - name: PyPI Settings
         run: |
           poetry config pypi-token.pypi ${{secrets.PYPI_TOKEN}}
-      - name: Build Poetry
+      - name: Git tag
         run: |
           git tag v${{ github.event.inputs.version }}
+      - name: Poetry build
+        run: |
           poetry build
+      - name: Poetry publish
+        run: |
           poetry publish
       - name: Create Release
         id: create_release
