@@ -1,8 +1,12 @@
 [tool.poetry]
 name = "bgprecorder"
-version = "1.0.0"
-description = ""
+version = "0.0.0"
+description = "BGP rib timeseries recording tool"
 authors = ["yas-nyan <yas-nyan@sfc.wide.ad.jp>"]
+homepage = "https://github.com/wide-vsix/bgprecorder"
+repository = "https://github.com/wide-vsix/bgprecorder"
+license = "MIT"
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -20,3 +24,6 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 bgpquery = "bgprecorder.cli:query"
 bgprecorder = "bgprecorder.cli:recorder"
+
+[tool.poetry-version-plugin]
+source = "git-tag"
