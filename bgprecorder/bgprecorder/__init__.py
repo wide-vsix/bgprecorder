@@ -1,1 +1,1 @@
-from .util import *
+from .bgprecorder import BgpRecorder
