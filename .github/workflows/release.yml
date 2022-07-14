@@ -81,6 +81,4 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags:
-            - ghcr.io/wide-vsix/bgprecorder:latest
-            - ghcr.io/wide-vsix/bgprecorder:${{ github.event.inputs.version }}
+          tags: ghcr.io/wide-vsix/bgprecorder:latest , ghcr.io/wide-vsix/bgprecorder:${{ github.event.inputs.version }}
